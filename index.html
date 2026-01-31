@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>상추&김치 퍼즐 (최종완성)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <style>
+        /* 모든 요소의 크기 계산을 테두리 포함으로 통일 */
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #FFC0CB;
+            font-family: 'Jua', sans-serif;
+            overflow: hidden; /* 스크롤바 없애기 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* === 1. 상단 영역 (20%) === */
+        #top-area {
+            height: 20%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(255,255,255,0.4);
+            z-index: 10;
+        }
+
+        #ref-title { color: #d63384; font-size: 1.2rem; margin-bottom: 5px; }
+        #ref-img { 
+            height: 70%; width: auto; 
+            border: 3px solid #fff; border-radius: 8px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* === 2. 중앙 게임 영역 (60%) === */
+        #game-area {
+            height: 60%;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        #puzzle-board {
+            /* 화면 가로폭의 90%를 쓰되, 너무 크면 높이에 맞춤 */
+            width: 90vw;
+            height: 90vw;
+            max-width: 50vh;
+            max-height: 50vh;
+            
+            /* [수정됨] 배경에 완성된 그림을 희미하게 깔기 */
+            /* rgba(255,255,255, 0.85) -> 흰색을 85% 불투명하게 덮어서 그림을 아주 희미하게 만듦 */
+            background-image: linear-gradient(rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85)), url('kimchi-b.png');
+            background-size: 100% 100%; /* 퍼즐판에 가득 차게 */
+            background-position: center;
+
+            border: 4px solid #333;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 0; /* 그림 끊김 방지 */
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .tile {
+            width: 100%;
+            height: 100%;
+            background-size: 400% 400%; /* 4x4 퍼즐 */
+            cursor: pointer;
+            border: 1px solid rgba(0,0,0,0.1); /* 조각 구분선 아주 연하게 */
+        }
+
+        .empty-tile {
+            background: transparent !important; /* 투명하게 해서 밑바탕 그림이 보이게 함 */
+            border: none;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.1); /* 빈칸 느낌 나게 안쪽 그림자 */
+        }
+
+        /* === 3. 하단 영역 (20%) === */
+        #bottom-area {
+            height: 20%;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            background: linear-gradient(to top, rgba(255,255,255,0.6), transparent);
+        }
+
+        /* 하단 고양이 장식 크기 조절 */
+        .deco-cat {
+            height: 80%;
+            width: auto;
+            object-fit: contain;
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.2));
+            animation: bounce 2s infinite ease-in-out;
+        }
+        #cat-right { animation-delay: 1s; }
+
+        /* 시작 버튼 */
+        #btn-start {
+            padding: 12px 24px;
+            font-size: 1.2rem;
+            font-family: 'Jua', sans-serif;
+            background-color: #fff;
+            color: #333;
+            border: 3px solid #333;
+            border-radius: 30px;
+            box-shadow: 0 4px 0 #333;
+            cursor: pointer;
+            z-index: 20;
+        }
+        #btn-start:active { transform: translateY(3px); box-shadow: 0 1px 0 #333; }
+
+        /* === 팝업 === */
+        #overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none; /* JS로 제어 */
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: white;
+        }
+        #overlay-msg { font-size: 2rem; margin-bottom: 20px; }
+        #success-img { width: 60%; border: 5px solid #fff; border-radius: 15px; }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="top-area">
+        <div id="ref-title">⭐ 완성 예시 ⭐</div>
+        <img src="kimchi-b.png" id="ref-img" alt="정답 그림">
+    </div>
+
+    <div id="game-area">
+        <div id="puzzle-board"></div>
+        
+        <div id="overlay">
+            <div id="overlay-msg">준비...</div>
+            <img src="kimchi-L.png" id="success-img">
+        </div>
+    </div>
+
+    <div id="bottom-area">
+        <img src="kimchi-o2.webp" id="cat-left" class="deco-cat">
+        <button id="btn-start" onclick="initGame()">GAME START</button>
+        <img src="kimchi-o3.webp" id="cat-right" class="deco-cat">
+    </div>
+
+    <script>
+        const ROWS = 4;
+        const COLS = 4;
+        // 파일명이 정확해야 이미지가 나옵니다!
+        const IMG_MAIN = 'kimchi-b.png';
+        const IMG_SUCCESS = 'kimchi-L.png';
+        
+        let tiles = [];
+        let emptyIndex = 15;
+        let isPlaying = false;
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'slide') {
+                osc.frequency.setValueAtTime(600, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'win') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523, now); 
+                osc.frequency.setValueAtTime(659, now + 0.2); 
+                osc.frequency.setValueAtTime(783, now + 0.4);
+                gainNode.gain.linearRampToValueAtTime(0, now + 1.5);
+                osc.start(now); osc.stop(now + 1.5);
+            } else if (type === 'start') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(400, now);
+                gainNode.gain.linearRampToValueAtTime(0, now + 0.2);
+                osc.start(now); osc.stop(now + 0.2);
+            }
+        }
+
+        function initGame() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const board = document.getElementById('puzzle-board');
+            const overlay = document.getElementById('overlay');
+            const overlayMsg = document.getElementById('overlay-msg');
+            const successImg = document.getElementById('success-img');
+
+            tiles = [];
+            isPlaying = false;
+            successImg.style.display = 'none';
+            board.innerHTML = '';
+            
+            // 타일 생성
+            for (let i = 0; i < ROWS * COLS; i++) {
+                tiles.push(i);
+                createTileElement(i, i, false);
+            }
+
+            // 카운트다운
+            overlay.style.display = 'flex';
+            let count = 3;
+            overlayMsg.innerText = "준비...";
+            playSound('start');
+
+            const countdown = setInterval(() => {
+                overlayMsg.innerText = count + "!";
+                playSound('start');
+                count--;
+                if (count < 0) {
+                    clearInterval(countdown);
+                    overlayMsg.innerText = "Start!";
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                        shuffleTiles();
+                        isPlaying = true;
+                    }, 500);
+                }
+            }, 800);
+        }
+
+        function createTileElement(posIndex, imgIndex, showEmpty = true) {
+            const board = document.getElementById('puzzle-board');
+            const tile = document.createElement('div');
+            
+            tile.classList.add('tile');
+            tile.id = `tile-${posIndex}`;
+            
+            if (showEmpty && imgIndex === ROWS * COLS - 1) {
+                tile.classList.add('empty-tile');
+            } else {
+                const xPercent = (imgIndex % COLS) * (100 / (COLS - 1));
+                const yPercent = Math.floor(imgIndex / ROWS) * (100 / (ROWS - 1));
+                tile.style.backgroundImage = `url('${IMG_MAIN}')`;
+                tile.style.backgroundPosition = `${xPercent}% ${yPercent}%`;
+            }
+            
+            tile.onclick = () => moveTile(posIndex);
+            board.appendChild(tile);
+        }
+
+        function shuffleTiles() {
+            tiles = Array.from({length: 16}, (_, i) => i);
+            emptyIndex = 15;
+            let count = 0;
+            const maxMoves = 200; 
+            
+            const interval = setInterval(() => {
+                const neighbors = getNeighbors(emptyIndex);
+                const randomNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+                [tiles[emptyIndex], tiles[randomNeighbor]] = [tiles[randomNeighbor], tiles[emptyIndex]];
+                emptyIndex = randomNeighbor;
+                renderBoard();
+                count++;
+                if (count >= maxMoves) clearInterval(interval);
+            }, 5);
+        }
+
+        function getNeighbors(idx) {
+            const neighbors = [];
+            const row = Math.floor(idx / COLS);
+            const col = idx % COLS;
+            if (row > 0) neighbors.push(idx - COLS);
+            if (row < ROWS - 1) neighbors.push(idx + COLS);
+            if (col > 0) neighbors.push(idx - 1);
+            if (col < COLS - 1) neighbors.push(idx + 1);
+            return neighbors;
+        }
+
+        function moveTile(clickIndex) {
+            if (!isPlaying) return;
+            const neighbors = getNeighbors(emptyIndex);
+            if (neighbors.includes(clickIndex)) {
+                [tiles[emptyIndex], tiles[clickIndex]] = [tiles[clickIndex], tiles[emptyIndex]];
+                emptyIndex = clickIndex;
+                playSound('slide');
+                renderBoard();
+                checkWin();
+            }
+        }
+
+        function renderBoard() {
+            const board = document.getElementById('puzzle-board');
+            board.innerHTML = '';
+            tiles.forEach((imgNum, posIndex) => {
+                createTileElement(posIndex, imgNum, true);
+            });
+        }
+
+        function checkWin() {
+            const isWin = tiles.every((val, index) => val === index);
+            if (isWin && isPlaying) {
+                isPlaying = false;
+                playSound('win');
+                setTimeout(() => {
+                    const overlay = document.getElementById('overlay');
+                    const overlayMsg = document.getElementById('overlay-msg');
+                    const successImg = document.getElementById('success-img');
+                    
+                    const lastTile = document.querySelector('.empty-tile');
+                    if(lastTile) {
+                        lastTile.classList.remove('empty-tile');
+                        lastTile.style.backgroundImage = `url('${IMG_MAIN}')`;
+                        lastTile.style.backgroundPosition = `100% 100%`;
+                    }
+
+                    overlay.style.display = 'flex';
+                    overlayMsg.innerText = "🎉 성공! 축하해요! 🎉";
+                    successImg.src = IMG_SUCCESS;
+                    successImg.style.display = 'block';
+                }, 300);
+            }
+        }
+    </script>
+</body>
+</html>
